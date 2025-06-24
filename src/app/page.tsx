@@ -8,7 +8,11 @@ import { api } from "@/trpc/react";
 export default function Home() {
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
-  const [analysis, setAnalysis] = useState<string>("");
+  const [displayText, setDisplayText] = useState<string>("");
+
+  type AnalysisResponse =
+    | { type: "analysis"; aiResponse: unknown }
+    | { type: "error"; message: string };
 
   const processFilesMutation = api.analysis.processFiles.useMutation();
 
@@ -19,8 +23,10 @@ export default function Home() {
 
   const handleSubmit = async () => {
     if (!jdFile || !cvFile) {
-      setAnalysis("Please upload both JD and CV files.");
+      setDisplayText("Please upload both JD and CV files.");
       return;
+    } else {
+      setDisplayText("Please wait while we process your files...");
     }
     // Read files as base64
     const readFileAsBase64 = (file: File) =>
@@ -35,18 +41,26 @@ export default function Home() {
         readFileAsBase64(jdFile),
         readFileAsBase64(cvFile),
       ]);
-      const response = await processFilesMutation.mutateAsync([
+      const response = (await processFilesMutation.mutateAsync([
         { type: "jd", file: jdBase64 },
         { type: "cv", file: cvBase64 },
-      ]);
-      setAnalysis(
-        response
-          .map((r) => `${r.type.toUpperCase()}: ${r.aiResponse}`)
-          .join("\n"),
-      );
+      ])) as AnalysisResponse;
+      if (response.type === "analysis") {
+        setDisplayText(
+          typeof response.aiResponse === "string"
+            ? response.aiResponse
+            : JSON.stringify(response.aiResponse, null, 2),
+        );
+      } else if (response.type === "error") {
+        setDisplayText(`Error: ${response.message}`);
+      } else {
+        setDisplayText("Unknown response from server.");
+      }
     } catch (err) {
+      let message = "Error processing files.";
+      if (err instanceof Error) message = err.message;
+      setDisplayText(message);
       console.error(err);
-      setAnalysis("Error processing files.");
     }
   };
 
@@ -79,8 +93,8 @@ export default function Home() {
         >
           {processFilesMutation.isPending ? "Processing..." : "Submit"}
         </button>
-        <div className="mt-6 w-full max-w-2xl">
-          {analysis && <AnalysisComponent content={analysis} />}
+        <div className="mt-6 w-full max-w-2xl text-center">
+          {displayText && <AnalysisComponent content={displayText} />}
         </div>
       </div>
     </main>
