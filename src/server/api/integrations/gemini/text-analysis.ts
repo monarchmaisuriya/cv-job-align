@@ -22,6 +22,16 @@ interface GenerateContentRequest {
   systemInstruction?: unknown;
 }
 
+type GeminiApiResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+};
+
 export async function analyze({
   cv,
   jd,
@@ -31,12 +41,10 @@ export async function analyze({
   jd: string;
   instructions: string;
 }): Promise<unknown> {
-  const endpoint = env.GEMINI_ENDPOINT as string;
-  const token = env.GEMINI_TOKEN as string;
-  if (!endpoint || !token)
+  const endpoint = `${env.GEMINI_ENDPOINT}?key=${env.GEMINI_TOKEN}`;
+  if (!endpoint)
     throw new Error("Gemini endpoint or token missing in environment");
 
-  // Compose the prompt for Gemini
   const prompt = `${instructions}\n\nJob Description (PDF text):\n${jd}\n\nCandidate CV (PDF text):\n${cv}`;
 
   const requestBody: GenerateContentRequest = {
@@ -53,12 +61,10 @@ export async function analyze({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        "x-goog-api-key": env.GEMINI_TOKEN,
       },
       body: JSON.stringify(requestBody),
     });
-
-    console.log({ res });
 
     if (res.status === 401) {
       throw new Error("Unauthorized for Gemini API");
@@ -72,8 +78,15 @@ export async function analyze({
       throw new Error(`Gemini API error: ${res.status} ${String(errorText)}`);
     }
 
-    const data: unknown = await res.json();
-    return data;
+    const data: GeminiApiResponse = (await res.json()) as GeminiApiResponse;
+    if (!data) {
+      throw new Error("Gemini API response is empty");
+    }
+
+    const result =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ??
+      "No analysis available.";
+    return result;
   } catch (err) {
     if (err instanceof Error) {
       throw new Error(err.message);

@@ -94,7 +94,7 @@ export default function Home() {
           {processFilesMutation.isPending ? "Processing..." : "Submit"}
         </button>
         <div className="mt-6 w-full max-w-2xl text-center">
-          {displayText && <AnalysisComponent content={displayText} />}
+          {displayText && <AnalysisComponent data={displayText} />}
         </div>
       </div>
     </main>

@@ -1,16 +1,18 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
 
-interface AnalysisProps {
-  content: string;
+interface AnalysisComponentProps {
+  data?: string;
 }
 
-export const AnalysisComponent: React.FC<AnalysisProps> = ({ content }) => {
-  let display: string;
-  try {
-    const parsed: unknown = JSON.parse(content);
-    display = JSON.stringify(parsed, null, 2);
-  } catch {
-    display = content;
-  }
-  return <div className="whitespace-pre-wrap text-white">{display}</div>;
+export const AnalysisComponent: React.FC<AnalysisComponentProps> = ({
+  data,
+}) => {
+  return (
+    <div className="mx-auto max-w-4xl space-y-6 rounded-lg p-6 text-white">
+      <div>
+        <ReactMarkdown>{data ?? "No analysis available."}</ReactMarkdown>
+      </div>
+    </div>
+  );
 };
